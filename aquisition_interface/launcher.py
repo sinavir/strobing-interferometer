@@ -1,7 +1,6 @@
 import logging
-import queue
+import os
 
-import numpy as np
 import PyQt5
 import pyqtgraph as pg
 from PyQt5 import QtCore, QtGui, QtWidgets
@@ -33,11 +32,19 @@ class SMainWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         self.ui.raw_img = pg.ImageItem(levels=(0, 1024))
-        self.ui.raw_imv.addItem(self.ui.raw_img)
-        self.ui.raw_imv.addColorBar(self.ui.raw_img, colorMap="viridis")
-        self.ui.processed_img = pg.ImageItem()
-        self.ui.processed_imv.addItem(self.ui.processed_img)
-        self.ui.processed_imv.addColorBar(self.ui.processed_img, colorMap="viridis")
+        self.ui.raw_plot = self.ui.raw_imv.addPlot(title="Camera image")
+        self.ui.raw_plot.addItem(self.ui.raw_img)
+        hist = pg.HistogramLUTItem()
+        hist.setImageItem(self.ui.raw_img)
+        hist.setLevels(0, 1024)
+        self.ui.raw_imv.addItem(hist)
+        self.ui.processed_img = pg.ImageItem(levels=(0, 1024))
+        self.ui.processed_plot = self.ui.processed_imv.addPlot(title="Camera image")
+        self.ui.processed_plot.addItem(self.ui.processed_img)
+        hist = pg.HistogramLUTItem()
+        hist.setImageItem(self.ui.processed_img)
+        hist.setLevels(0, 1024)
+        self.ui.processed_imv.addItem(hist)
 
     def setValidators(self):
         self.ui.freq_field.setValidator(
@@ -111,6 +118,7 @@ class SMainWindow(QtWidgets.QMainWindow):
 
 
 if __name__ == "__main__":
+    logger.info(f"Hello, my pid is {os.getpid()}")
     # with TLCameraSDK() as sdk:
     #    camera_list = sdk.discover_available_cameras()
     #    with sdk.open_camera(camera_list[0]) as camera:
