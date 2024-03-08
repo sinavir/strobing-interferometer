@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 class RecordingQueue(QObject):
     new_frame = pyqtSignal(int, np.ndarray)
+    ready = pyqtSignal()
 
     def __init__(self, length):
         super().__init__()
@@ -29,6 +30,7 @@ class RecordingQueue(QObject):
             self._temp_timestamps.append(ts)
             if len(self._temp_rec_queue) >= self.max_length:
                 self.beginProcessing()
+            self.ready.emit()
             return
         # move tail pointer forward then insert at the tail of the queue
         # to enforce max length of recording
@@ -37,11 +39,15 @@ class RecordingQueue(QObject):
         self.timestamps[self.queue_tail] = ts
         self.compute()
 
+    def start(self):
+        self.ready.emit()
+
     def compute(self):
         raise NotImplementedError
 
     def emit(self, ts, frame):
         self.new_frame.emit(ts, frame)
+        self.ready.emit()
 
     def beginProcessing(self):
         """

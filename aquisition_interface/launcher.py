@@ -12,6 +12,7 @@ import gui
 from camera import ImageAcquisitionThread
 from fake_cam import FakeCam
 from processing import StatRecordingQueue
+from utils import FrameBuffer
 
 # from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 
@@ -135,6 +136,9 @@ if __name__ == "__main__":
     processor = StatRecordingQueue(10)
     processor.moveToThread(processing_thread)
 
+    frameBuffer = FrameBuffer(2)
+    frameBuffer.moveToThread(image_acquisition_thread)
+
     win = SMainWindow()
 
     # init window
@@ -152,9 +156,14 @@ if __name__ == "__main__":
         win.ui.processed_img.setImage(img, autoLevels=False)
         logger.debug(f"Updated processed image display [{ts}]")
 
-    image_acquisition_thread.new_frame.connect(processor.enqueue)
-    image_acquisition_thread.new_frame.connect(updateRaw)
+    image_acquisition_thread.new_frame.connect(frameBuffer.enqueue)
+    frameBuffer.new_frame.connect(processor.enqueue)
+    frameBuffer.new_frame.connect(updateRaw)
+
+    processor.ready.connect(frameBuffer.nextIsReady)
     processor.new_frame.connect(updateProcessed)
+
+    processor.start()
 
     image_acquisition_thread.start()
 
