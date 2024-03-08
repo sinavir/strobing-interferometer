@@ -1,14 +1,17 @@
 import logging
 import os
+import signal
 
+import numpy as np
 import PyQt5
 import pyqtgraph as pg
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtGui, QtWidgets
+from PyQt5.QtCore import QThread, pyqtSlot
 
 import gui
 from camera import ImageAcquisitionThread
 from fake_cam import FakeCam
-from processing import StdProcessing
+from processing import StatRecordingQueue
 
 # from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 
@@ -119,61 +122,55 @@ class SMainWindow(QtWidgets.QMainWindow):
 
 if __name__ == "__main__":
     logger.info(f"Hello, my pid is {os.getpid()}")
+    app = pg.mkQApp("Stroboscopic imaging")
     # with TLCameraSDK() as sdk:
     #    camera_list = sdk.discover_available_cameras()
     #    with sdk.open_camera(camera_list[0]) as camera:
     camera = FakeCam()
     logger.info("Generating app...")
     image_acquisition_thread = ImageAcquisitionThread(camera)
-    processing_thread = StdProcessing(
-        image_acquisition_thread.processing_queue, (10, 1024, 1024)
-    )
-    app = pg.mkQApp("Stroboscopic imaging")
+
+    processing_thread = QThread()
+    processing_thread.start()
+    processor = StatRecordingQueue(10)
+    processor.moveToThread(processing_thread)
+
     win = SMainWindow()
 
     # init window
     win.show()
-
     win.setValidators()
     win.setFrequencySelectorLogic()
 
-    def update():
-        if not image_acquisition_thread.image_queue.empty():
-            ts, img = image_acquisition_thread.image_queue.get_nowait()
-            win.ui.raw_img.setImage(img, autoLevels=False)
-            logger.debug(f"Updated image at timestamp {ts}")
-        else:
-            logger.debug("Queue empty, not updating")
-        if not processing_thread.out_queue.empty():
-            ts, img = processing_thread.out_queue.get_nowait()
-            win.ui.processed_img.setImage(img)
-            logger.debug(f"Updated image at timestamp {ts}")
-        else:
-            logger.debug("Queue empty, not updating")
+    @pyqtSlot(int, np.ndarray)
+    def updateRaw(ts, img):
+        win.ui.raw_img.setImage(img, autoLevels=False)
+        logger.debug(f"Updated raw image display [{ts}]")
 
-    timer = QtCore.QTimer()
-    timer.timeout.connect(update)
+    @pyqtSlot(int, np.ndarray)
+    def updateProcessed(ts, img):
+        win.ui.processed_img.setImage(img, autoLevels=False)
+        logger.debug(f"Updated processed image display [{ts}]")
 
-    logger.info("Setting camera parameters...")
-    camera.frames_per_trigger_zero_for_unlimited = 0
+    image_acquisition_thread.new_frame.connect(processor.enqueue)
+    image_acquisition_thread.new_frame.connect(updateRaw)
+    processor.new_frame.connect(updateProcessed)
 
-    # This buffer size comes from thorlabs' live camera example. Let's keep it
-    camera.arm(2)
-
-    timer.start(10)
-    camera.issue_software_trigger()
-
-    logger.info("Starting image acquisition")
-    processing_thread.start()
     image_acquisition_thread.start()
 
+    logger.debug("Setting up signals")
+
+    def intHandler(sig, frame):
+        app.quit()
+
+    signal.signal(signal.SIGINT, intHandler)
     logger.info("App starting")
     app.exec()
 
     logger.info("Waiting for image acquisition thread to finish...")
-    processing_thread.stop()
-    processing_thread.join()
-    image_acquisition_thread.stop()
-    image_acquisition_thread.join()
+    image_acquisition_thread.exit()
+    image_acquisition_thread.wait()
+    processing_thread.exit()
+    processing_thread.wait()
 
     logger.info("App terminated. Goodbye!")
