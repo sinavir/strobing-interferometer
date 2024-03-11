@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "strobing-interferometer"
+version = "0.1.0"
+authors = [
+  { name="Maurice Debray", email="maurice.debray@ens.psl.eu" },
+]
+description = ""
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: European Union Public Licence 1.2 (EUPL 1.2)",
+]
+dependencies = [
+  "pyqtgraph==0.11.0",
+  "pyqt5",
+]
+
+[project.urls]
+Homepage = "https://github.com/sinavir/strobing-interferometer"
