@@ -18,16 +18,10 @@ logging.basicConfig(level=logging.INFO)
 """ Main
 """
 
-
-if __name__ == "__main__":
-    logger.info(f"Hello, my pid is {os.getpid()}")
-    app = pg.mkQApp("Stroboscopic imaging")
-    # with TLCameraSDK() as sdk:
-    #    camera_list = sdk.discover_available_cameras()
-    #    with sdk.open_camera(camera_list[0]) as camera:
-    camera = FakeCam()
-
+def run(camera):
     logger.info("Generating app...")
+    app = pg.mkQApp("Stroboscopic imaging")
+
     processing_thread = ProcessingProcess()
     image_acquisition_thread = ImageAcquisitionThread(camera, processing_thread)
     win = SMainWindow()
@@ -86,3 +80,11 @@ if __name__ == "__main__":
     image_acquisition_thread.join()
 
     logger.info("App terminated. Goodbye!")
+
+if __name__ == "__main__":
+    logger.info(f"Hello, my pid is {os.getpid()}")
+    # with TLCameraSDK() as sdk:
+    #    camera_list = sdk.discover_available_cameras()
+    #    with sdk.open_camera(camera_list[0]) as camera:
+    camera = FakeCam()
+    run(camera)
