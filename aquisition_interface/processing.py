@@ -3,6 +3,8 @@
 
 import logging
 import multiprocessing
+import signal
+import time
 from queue import Full
 
 import numpy as np
@@ -11,15 +13,22 @@ logger = logging.getLogger(__name__)
 
 
 class ProcessingProcess(multiprocessing.Process):
-    def __init__(self, **kwargs):
+    def __init__(self, processor, **kwargs):
         super().__init__(**kwargs)
         self.in_queue = multiprocessing.Queue(maxsize=2)
         self.out_queue = multiprocessing.Queue(maxsize=2)
+        self.messages = multiprocessing.Queue()
         self.stop_event = multiprocessing.Event()
-        self.records = StatRecordingQueue(10)
+        self.records = processor
 
     def stop(self):
         self.stop_event.set()
+        while not self.out_queue.empty():
+            self.out_queue.get()
+        while not self.in_queue.empty():
+            self.in_queue.get()
+        while not self.messages.empty():
+            self.messages.get()
 
     def put(self, ts, img):
         logger.debug("Queuing for processing")
@@ -32,7 +41,12 @@ class ProcessingProcess(multiprocessing.Process):
         return self.out_queue.get_nowait()
 
     def run(self):
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
         while not self.stop_event.is_set():
+            if not self.messages.empty():
+                attrs = self.messages.get_nowait()
+                for k in attrs:
+                    setattr(self.records, k, attrs[k])
             if not self.in_queue.empty():
                 ts, frame = self.in_queue.get_nowait()
                 rslt = self.records.enqueue(ts, frame)
@@ -40,13 +54,13 @@ class ProcessingProcess(multiprocessing.Process):
                     continue
                 try:
                     self.out_queue.put_nowait(rslt)
+                    print("put processed frame")
                 except Full:
                     pass
-        print("exit sub process")
 
 
 class RecordingQueue:
-    def __init__(self, length):
+    def __init__(self, length, compute_period=5):
         super().__init__()
         # allocate the memory we need ahead of time
         self.max_length = length
@@ -55,6 +69,8 @@ class RecordingQueue:
         self.timestamps = None
         self._temp_rec_queue = []
         self._temp_timestamps = []
+        self.compute_period = compute_period
+        self.counter = 0
 
     def enqueue(self, ts, new_data):
         if self.rec_queue is None:
@@ -68,9 +84,17 @@ class RecordingQueue:
         self.queue_tail = (self.queue_tail + 1) % self.max_length
         self.rec_queue[self.queue_tail] = new_data
         self.timestamps[self.queue_tail] = ts
-        return self.compute()
+        self.compute_fast()
+        self.counter += 1
+        if self.counter == self.compute_period:
+            self.counter = 0
+            return self.compute_slow()
+        return None
 
-    def compute(self):
+    def compute_fast(self):
+        pass
+
+    def compute_slow(self):
         raise NotImplementedError
 
     def beginProcessing(self):
@@ -97,7 +121,7 @@ class StatRecordingQueue(RecordingQueue):
     def __init__(self, length):
         super().__init__(length)
 
-    def compute(self):
+    def compute_slow(self):
         return (self.timestamps[self.queue_tail], self.std())
 
     def std(self):
@@ -108,8 +132,8 @@ class StatRecordingQueue(RecordingQueue):
 
 
 class DemodRecordingQueue(RecordingQueue):
-    def __init__(self, length, pulsation, discrete_bw):
-        super().__init__(length)
+    def __init__(self, length, pulsation, discrete_bw, compute_period=1):
+        super().__init__(length, compute_period)
         self.pulsation = pulsation
         self.discrete_bw = discrete_bw
         self.demodulated = None
@@ -123,21 +147,24 @@ class DemodRecordingQueue(RecordingQueue):
         )
         # may be there is an adhoc function for this in numpy
         self.output = self.demodulated[0]
-        for i in range(1, self.maxsize):
+        for i in range(1, self.max_length):
             self.computeOutput(at=i)
 
     def computeOutput(self, at=None):
-        if at is not None:
+        if at is None:
             at = self.queue_tail
         prev = (at - 1) % self.max_length
         # Add a correction to the bandwisth since the images are not perfectly spaced a priori
         w = self.discrete_bw * (self.timestamps[at] - self.timestamps[prev])
         self.output = (1 - w) * self.output + w * self.demodulated[at]
 
-    def compute(self):
+    def compute_fast(self):
         ts = self.timestamps[self.queue_tail]
         self.demodulated[self.queue_tail] = self.rec_queue[self.queue_tail] * np.exp(
             1.0j * self.pulsation * ts
         )
         self.computeOutput()
-        return (ts, self.output)
+
+    def compute_slow(self):
+        ts = self.timestamps[self.queue_tail]
+        return (ts, np.absolute(self.output))

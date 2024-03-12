@@ -1,13 +1,16 @@
 import logging
 import os
 import signal
+import sys
 
+import numpy as np
 import pyqtgraph as pg
 from PyQt5 import QtCore
 
 from .camera import ImageAcquisitionThread
 from .fake_cam import FakeCam
-from .processing import ProcessingProcess
+from .processing import (DemodRecordingQueue, ProcessingProcess,
+                         StatRecordingQueue)
 from .window import SMainWindow
 
 # from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
@@ -18,11 +21,17 @@ logging.basicConfig(level=logging.INFO)
 """ Main
 """
 
+
 def run(camera):
     logger.info("Generating app...")
     app = pg.mkQApp("Stroboscopic imaging")
 
-    processing_thread = ProcessingProcess()
+    def intHandler(sig, frame):
+        app.quit()
+
+    signal.signal(signal.SIGINT, intHandler)
+
+    processing_thread = ProcessingProcess(DemodRecordingQueue(10, 1e-9, 1e-10))
     image_acquisition_thread = ImageAcquisitionThread(camera, processing_thread)
     win = SMainWindow()
 
@@ -31,6 +40,22 @@ def run(camera):
 
     win.setValidators()
     win.setFrequencySelectorLogic()
+
+    def detuning_update():
+        try:
+            detuning = float(win.ui.detuning.text())
+        except ValueError:
+            logging.INFO("Didn't set the detuning")
+            return
+        pulsation = 2 * np.pi * detuning / 1e9  # nano seconds ^ -1
+        processing_thread.messages.put(
+            {
+                "pulsation": pulsation,
+                "discrete_bw": pulsation / 10,
+            }
+        )
+
+    win.ui.detuning_field.editingFinished.connect(detuning_update)
 
     def update():
         if not image_acquisition_thread.image_queue.empty():
@@ -65,21 +90,16 @@ def run(camera):
 
     logger.info("App starting")
 
-    logger.debug("Setting up signals")
-
-    def intHandler(sig, frame):
-        app.quit()
-
-    signal.signal(signal.SIGINT, intHandler)
     app.exec()
 
     logger.info("Waiting for image acquisition thread to finish...")
-    processing_thread.stop()
-    processing_thread.join()
     image_acquisition_thread.stop()
     image_acquisition_thread.join()
+    processing_thread.stop()
+    processing_thread.join()
 
     logger.info("App terminated. Goodbye!")
+
 
 if __name__ == "__main__":
     logger.info(f"Hello, my pid is {os.getpid()}")
@@ -88,3 +108,4 @@ if __name__ == "__main__":
     #    with sdk.open_camera(camera_list[0]) as camera:
     camera = FakeCam()
     run(camera)
+    sys.exit(0)

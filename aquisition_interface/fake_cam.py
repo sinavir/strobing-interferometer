@@ -27,7 +27,8 @@ class FakeCam:
         self.last_ts = timestamp
         return FakeFrame(
             timestamp,
-            512 * np.sin(self.kx * self.x + self.ky * self.y + timestamp) + 521,
+            512 * np.sin(self.kx * self.x + self.ky * self.y + timestamp * 2 * np.pi)
+            + 521,
         )
 
 
