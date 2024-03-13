@@ -8,3 +8,5 @@ result-*
 .gcroots
 .pre-commit-config.yaml
 __pycache__/
+
+/Scientific Camera Interfaces
