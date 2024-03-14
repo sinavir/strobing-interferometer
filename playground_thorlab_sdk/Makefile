@@ -1,6 +1,6 @@
 # tool macros
 CC ?= cc
-CFLAGS := -Wall -Wextra -Wno-parentheses -Iincludes -Wl,--no-as-needed -ldl
+CFLAGS := -Wall -Wextra -Wno-parentheses -Iincludes -Wl,--no-as-needed,-rpath,./prebuilt -ldl
 DBGFLAGS := -g
 COBJFLAGS := $(CFLAGS) -c
 
