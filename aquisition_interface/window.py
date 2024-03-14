@@ -14,19 +14,19 @@ class SMainWindow(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
 
         self.ui.raw_img = pg.ImageItem(levels=(0, 1024))
-        self.ui.raw_plot = self.ui.raw_imv.addPlot(title="Camera image")
+        self.ui.raw_plot = self.ui.raw_window.addPlot(title="Camera image")
         self.ui.raw_plot.addItem(self.ui.raw_img)
         hist = pg.HistogramLUTItem()
         hist.setImageItem(self.ui.raw_img)
         hist.setLevels(0, 1024)
-        self.ui.raw_imv.addItem(hist)
+        self.ui.raw_window.addItem(hist)
         self.ui.processed_img = pg.ImageItem(levels=(0, 1024))
-        self.ui.processed_plot = self.ui.processed_imv.addPlot(title="Camera image")
+        self.ui.processed_plot = self.ui.processed_window.addPlot(title="Camera image")
         self.ui.processed_plot.addItem(self.ui.processed_img)
         hist = pg.HistogramLUTItem()
         hist.setImageItem(self.ui.processed_img)
         hist.setLevels(0, 1024)
-        self.ui.processed_imv.addItem(hist)
+        self.ui.processed_window.addItem(hist)
 
     def setValidators(self):
         self.ui.freq_field.setValidator(
