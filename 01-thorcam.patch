@@ -1,0 +1,11 @@
+--- a/setup.py
++++ b/setup.py
+@@ -22,5 +22,7 @@
+         'enum34;python_version<"3.4"',
+         'typing;python_version<"3.5"',
+ 
+-    ]
++    ],
++    include_package_data=True,
++    package_data={'thorlabs_tsi_sdk': ['*.so']},
+ )

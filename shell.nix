@@ -14,6 +14,13 @@ pkgs.mkShell {
       ps.numpy
       ps.scipy
       ps.pyqt5
+      ps.ipython
+      ps.tqdm
+      ps.h5py
+      ps.ipympl
+      ps.matplotlib
+      ps.jupyter
+      (ps.callPackage ./thorcam.nix {})
     ]))
 
     archeology.qt5.qtwayland
