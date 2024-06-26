@@ -13,7 +13,7 @@
 #ifndef THORLABS_TSI_BUILD_DLL
 
 #ifdef _WIN32
-#include "Windows.h"
+#include "windows.h"
 static const char* DLL_NAME = "thorlabs_tsi_camera_sdk.dll";
 static HMODULE thorlabs_tsi_camera_sdk_shared_library = NULL;
 #else

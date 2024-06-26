@@ -1,6 +1,6 @@
 # tool macros
 CC ?= cc
-CFLAGS := -Wall -Wextra -Wno-parentheses -Iincludes -Wl,--no-as-needed,-rpath,./prebuilt -ldl
+CFLAGS := -Wall -Wextra -Wno-parentheses -Iincludes
 DBGFLAGS := -g
 COBJFLAGS := $(CFLAGS) -c
 
@@ -12,8 +12,10 @@ DBG_PATH := debug
 
 # compile macros
 TARGET_NAME := pg
-ifeq ($(OS),Windows_NT)
+ifeq ($(TARGET),Windows_NT)
 	TARGET_NAME := $(addsuffix .exe,$(TARGET_NAME))
+else
+	CFLAGS += -Wl,--no-as-needed -ldl -lthorlabs_tsi_camera_sdk -lthorlabs_tsi_zelux_camera_device -lopenblas
 endif
 TARGET := $(BIN_PATH)/$(TARGET_NAME)
 TARGET_DEBUG := $(DBG_PATH)/$(TARGET_NAME)
