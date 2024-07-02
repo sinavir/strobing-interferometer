@@ -1,0 +1,13 @@
+site_name: Stroboscopic imaging
+repo_url: "https://github.com/sinavir/strobing-interferometer"
+theme:
+  name: material
+markdown_extensions:
+  - admonition
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [../src]  # search packages in the src folder
+
