@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Union
+from typing import Union, Tuple
 
 import h5py
 import numpy as np
@@ -18,7 +18,7 @@ class InstrumentManager:
     default_manager = None
     rigol_addr = "TCPIP0::10.209.65.139::inst0::INSTR"
     rigol_channel = 1
-    bias_gain = 10
+    bias_gain = 0.1
 
     hf2_serial = "dev1224"
     camera_sn = "25779"
@@ -91,7 +91,7 @@ class InstrumentManager:
         step in 10V
         """
         delta_t = step_size / speed
-        old_bias = self.hf2.daq.getDouble("/dev1224/sigouts/1/offset")
+        old_bias = self.hf2.daq.getDouble("/dev1224/sigouts/1/offset") / self.bias_gain
         span = abs(new_bias - old_bias)
         n_step = int(np.ceil(span / step_size))  # pyright: ignore  # pyright is drunk
         steps = np.linspace(old_bias, new_bias, n_step)
@@ -108,7 +108,7 @@ class Acquisition:
         path: Union[Path, str],
         exposure_time_us: int,
         n_calib: int,
-        bias_range: tuple[float, float],
+        bias_range: Tuple[float, float],
         vid_len: int = 288,
         strobe_detuning: float = 0.5,
         instruments_manager=None,
@@ -155,7 +155,7 @@ class Acquisition:
 
         self.instruments_manager.drive_off()
 
-        self.instruments_manager.goToBias(biases[0])
+        self.instruments_manager.goToBias(biases[0], speed = 1.0)
 
         time.sleep(1)
 
@@ -221,7 +221,7 @@ class Acquisition:
                                 and frame.frame_count - prev_frame > 1
                             ):
                                 raise Exception(
-                                    "Dropped frame at bias n°{i} (Bias={bias*BIAS_GAIN})"
+                                    "Dropped frame at bias n°{i} (Bias={bias})"
                                 )
                             prev_frame = frame.frame_count
                     camera.disarm()
@@ -232,7 +232,7 @@ class Acquisition:
                     grp.create_dataset("videos", data=buffer, dtype=np.uint16)
                     grp.create_dataset("biases", data=biases)
 
-    print("Please turn on the drive and find the right frequency")
+        print("Please turn on the drive and find the right frequency")
 
     def acquire_modeshape(self):
         freq = self.instruments_manager.get_drive_freq()
