@@ -1133,6 +1133,13 @@
 
   
       <p>Standard analysis class.</p>
+<p>There is a bunch of instance variables that represent the different steps of the analysis.
+These variables are None by default. As you run the different functions of the class, these variables will get populated.</p>
+<p>There is a special <code>StdAnalysis.compute_all()</code> function that will perform the whole analysis.</p>
+<p>If you want to adapt this class to another file format than the default
+hdf5 format from the original project, you can subclass the class and
+override all the functions that access to <code>StdAnalysis._file</code> to ada pt to
+your custom file format.</p>
 
             <details class="quote">
               <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
@@ -1404,10 +1411,36 @@
 <span class="normal">271</span>
 <span class="normal">272</span>
 <span class="normal">273</span>
-<span class="normal">274</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">StdAnalysis</span><span class="p">:</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span> <span class="nc">StdAnalysis</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Standard analysis class.</span>
+
+<span class="sd">    There is a bunch of instance variables that represent the different steps of the analysis.</span>
+<span class="sd">    These variables are None by default. As you run the different functions of the class, these variables will get populated.</span>
+
+<span class="sd">    There is a special `StdAnalysis.compute_all()` function that will perform the whole analysis.</span>
+
+<span class="sd">    If you want to adapt this class to another file format than the default</span>
+<span class="sd">    hdf5 format from the original project, you can subclass the class and</span>
+<span class="sd">    override all the functions that access to `StdAnalysis._file` to ada pt to</span>
+<span class="sd">    your custom file format.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="n">calibration_biases</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">calibration_values</span> <span class="o">=</span> <span class="kc">None</span>
     <span class="n">calibration_slopes</span> <span class="o">=</span> <span class="kc">None</span>
@@ -1506,6 +1539,8 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">        Sets `self.calibration_slopes` to the slopes of calibration curves</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">calibration_slopes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
             <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_values</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
         <span class="p">)</span>  <span class="c1"># TODO: Provide X values for the gradient</span>
@@ -1513,7 +1548,7 @@
     <span class="nd">@staticmethod</span>
     <span class="k">def</span> <span class="nf">std_image</span><span class="p">(</span><span class="n">video</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Compute the single video phase image</span>
+<span class="sd">        Compute the mode shape (with phase) image for a single video.</span>
 
 <span class="sd">        It performs the following actions:</span>
 <span class="sd">            - Compute the stddev of each pixel along time</span>
@@ -1522,9 +1557,8 @@
 <span class="sd">              with the reference pixel time trace. This dot product inform use</span>
 <span class="sd">              on the phase of this point of the membrane with respect to the</span>
 <span class="sd">              reference pixel</span>
-<span class="sd">                - If the dot product is negative we return `- std(pixel)` for</span>
-<span class="sd">                  that pixel on the final image</span>
-<span class="sd">                - Else we return `std(pixel)` for that pixel in the final image</span>
+<span class="sd">                - If the dot product is negative we put `- std(pixel time trace)` on the image</span>
+<span class="sd">                - Else we put `std(pixel time trace)` on the image</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            video (np.ndarray): The raw video from the camera.</span>
@@ -1565,6 +1599,9 @@
 <span class="sd">        We also store the image apply only the second correction to `self.phase_corrected_images`</span>
 <span class="sd">        &quot;&quot;&quot;</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_slopes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
         <span class="n">videos</span><span class="p">,</span> <span class="n">specific_biases</span><span class="p">,</span> <span class="n">video_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_videos</span><span class="p">()</span>
 
         <span class="k">def</span> <span class="nf">find_nearest</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">value</span><span class="p">):</span>
@@ -1603,9 +1640,7 @@
         <span class="p">)</span>
         <span class="n">std_images_full_calibrated</span> <span class="o">=</span> <span class="n">std_images</span> <span class="o">*</span> <span class="n">specific_biases_calibration_slope</span>
         <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span> <span class="o">=</span> <span class="p">(</span>
-            <span class="n">std_images_full_calibrated</span>  <span class="c1"># Phase+amplitude # TODO</span>
-        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span> <span class="o">=</span> <span class="n">std_images_full_calibrated</span>  <span class="c1"># Phase+amplitude</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">phase_corrected_images</span> <span class="o">=</span> <span class="n">std_images_phase_calibrated</span>  <span class="c1"># phase only</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">calibration_slopes_video_indexed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_slopes</span><span class="p">[</span>
             <span class="n">specific_biases_indices</span>
@@ -1637,7 +1672,7 @@
         <span class="n">corrected_photos</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
             <span class="n">to_flip</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span><span class="p">,</span>
-            <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span><span class="p">,</span> <span class="c1"># pyright: ignore</span>
+            <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span><span class="p">,</span>  <span class="c1"># pyright: ignore</span>
         <span class="p">)</span>
 
         <span class="c1"># Initialize empty images</span>
@@ -1645,13 +1680,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">best_video_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">corrected_photos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">)</span>
         <span class="c1"># For each pixel get the best video time trace</span>
         <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">nditer</span><span class="p">(</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">mode_image</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;multi_index&quot;</span><span class="p">],</span> <span class="n">op_flags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;writeonly&quot;</span><span class="p">]</span> <span class="c1"># pyright: ignore</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">mode_image</span><span class="p">,</span>
+            <span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;multi_index&quot;</span><span class="p">],</span>
+            <span class="n">op_flags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;writeonly&quot;</span><span class="p">],</span>  <span class="c1"># pyright: ignore</span>
         <span class="p">)</span> <span class="k">as</span> <span class="n">it</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">pixel</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode_image</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
                 <span class="n">best_video</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span>
                     <span class="n">absolute_slopes</span><span class="p">[:,</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
                 <span class="p">)</span>
-                <span class="n">pixel</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">corrected_photos</span><span class="p">[</span> <span class="c1"># pyright: ignore</span>
+                <span class="n">pixel</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">corrected_photos</span><span class="p">[</span>  <span class="c1"># pyright: ignore</span>
                     <span class="n">best_video</span><span class="p">,</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
                 <span class="p">]</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">best_video_index</span><span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">best_video</span>
@@ -1823,14 +1860,14 @@
 
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">30</span>
-<span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">file</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Initialise the analysis class.</span>
 
@@ -1872,23 +1909,23 @@
 </details>
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">apply_membrane_shape_masking</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">apply_membrane_shape_masking</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">1.0</span><span class="p">,</span> <span class="n">sigma</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Compute the membrane shape in `self.mask`.</span>
 
@@ -1931,20 +1968,7 @@
 
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">226</span>
 <span class="normal">227</span>
 <span class="normal">228</span>
 <span class="normal">229</span>
@@ -1974,7 +1998,22 @@
 <span class="normal">253</span>
 <span class="normal">254</span>
 <span class="normal">255</span>
-<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">combine_images</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">combine_images</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Combine images.</span>
 
@@ -2000,7 +2039,7 @@
     <span class="n">corrected_photos</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
         <span class="n">to_flip</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span><span class="p">,</span>
-        <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span><span class="p">,</span> <span class="c1"># pyright: ignore</span>
+        <span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span><span class="p">,</span>  <span class="c1"># pyright: ignore</span>
     <span class="p">)</span>
 
     <span class="c1"># Initialize empty images</span>
@@ -2008,13 +2047,15 @@
     <span class="bp">self</span><span class="o">.</span><span class="n">best_video_index</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">corrected_photos</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">)</span>
     <span class="c1"># For each pixel get the best video time trace</span>
     <span class="k">with</span> <span class="n">np</span><span class="o">.</span><span class="n">nditer</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">mode_image</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;multi_index&quot;</span><span class="p">],</span> <span class="n">op_flags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;writeonly&quot;</span><span class="p">]</span> <span class="c1"># pyright: ignore</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">mode_image</span><span class="p">,</span>
+        <span class="n">flags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;multi_index&quot;</span><span class="p">],</span>
+        <span class="n">op_flags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;writeonly&quot;</span><span class="p">],</span>  <span class="c1"># pyright: ignore</span>
     <span class="p">)</span> <span class="k">as</span> <span class="n">it</span><span class="p">:</span>
         <span class="k">for</span> <span class="n">pixel</span> <span class="ow">in</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">it</span><span class="p">,</span> <span class="n">total</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">mode_image</span><span class="o">.</span><span class="n">size</span><span class="p">):</span>
             <span class="n">best_video</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span>
                 <span class="n">absolute_slopes</span><span class="p">[:,</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span>
             <span class="p">)</span>
-            <span class="n">pixel</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">corrected_photos</span><span class="p">[</span> <span class="c1"># pyright: ignore</span>
+            <span class="n">pixel</span><span class="p">[</span><span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="n">corrected_photos</span><span class="p">[</span>  <span class="c1"># pyright: ignore</span>
                 <span class="n">best_video</span><span class="p">,</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
             <span class="p">]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">best_video_index</span><span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">it</span><span class="o">.</span><span class="n">multi_index</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">best_video</span>
@@ -2041,16 +2082,20 @@
 
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_calibration_slopes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_calibration_slopes</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Sets `self.calibration_slopes` to the slopes of calibration curves</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">calibration_slopes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
         <span class="n">np</span><span class="o">.</span><span class="n">gradient</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">calibration_values</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
     <span class="p">)</span>  <span class="c1"># TODO: Provide X values for the gradient</span>
@@ -2083,19 +2128,7 @@ correction using the calibration data to correct
 
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">166</span>
 <span class="normal">167</span>
 <span class="normal">168</span>
 <span class="normal">169</span>
@@ -2140,7 +2173,20 @@ correction using the calibration data to correct
 <span class="normal">208</span>
 <span class="normal">209</span>
 <span class="normal">210</span>
-<span class="normal">211</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_independant_video_images</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">compute_independant_video_images</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Apply `self.std_images` to each video and then apply a proportional</span>
 <span class="sd">    correction using the calibration data to correct</span>
@@ -2152,6 +2198,9 @@ correction using the calibration data to correct
 
 <span class="sd">    We also store the image apply only the second correction to `self.phase_corrected_images`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_slopes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">Exception</span><span class="p">(</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
 
     <span class="n">videos</span><span class="p">,</span> <span class="n">specific_biases</span><span class="p">,</span> <span class="n">video_number</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_videos</span><span class="p">()</span>
 
@@ -2191,9 +2240,7 @@ correction using the calibration data to correct
     <span class="p">)</span>
     <span class="n">std_images_full_calibrated</span> <span class="o">=</span> <span class="n">std_images</span> <span class="o">*</span> <span class="n">specific_biases_calibration_slope</span>
     <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Done&quot;</span><span class="p">)</span>
-    <span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span> <span class="o">=</span> <span class="p">(</span>
-        <span class="n">std_images_full_calibrated</span>  <span class="c1"># Phase+amplitude # TODO</span>
-    <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">fully_calibrated_images</span> <span class="o">=</span> <span class="n">std_images_full_calibrated</span>  <span class="c1"># Phase+amplitude</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">phase_corrected_images</span> <span class="o">=</span> <span class="n">std_images_phase_calibrated</span>  <span class="c1"># phase only</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">calibration_slopes_video_indexed</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">calibration_slopes</span><span class="p">[</span>
         <span class="n">specific_biases_indices</span>
@@ -2221,12 +2268,12 @@ correction using the calibration data to correct
 
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span>
-<span class="normal">46</span>
-<span class="normal">47</span>
-<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">file_open_or_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">file_open_or_fail</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Check if file is open or fail with `IOError`</span>
 <span class="sd">    &quot;&quot;&quot;</span>
@@ -2262,18 +2309,7 @@ correction using the calibration data to correct
 
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">69</span>
 <span class="normal">70</span>
 <span class="normal">71</span>
 <span class="normal">72</span>
@@ -2281,7 +2317,18 @@ correction using the calibration data to correct
 <span class="normal">74</span>
 <span class="normal">75</span>
 <span class="normal">76</span>
-<span class="normal">77</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_videos</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">get_videos</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Return a tuple of two generators:</span>
 <span class="sd">        - One yielding the videos</span>
@@ -2356,18 +2403,7 @@ respectively the biases values and the smoothed pixel intensity values.</p>
 
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 90</span>
 <span class="normal"> 91</span>
 <span class="normal"> 92</span>
 <span class="normal"> 93</span>
@@ -2379,7 +2415,18 @@ respectively the biases values and the smoothed pixel intensity values.</p>
 <span class="normal"> 99</span>
 <span class="normal">100</span>
 <span class="normal">101</span>
-<span class="normal">102</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">smooth_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])):</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span> <span class="nf">smooth_calibration</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">window</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">])):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Smooth the calibration data points.</span>
 
@@ -2426,7 +2473,7 @@ respectively the biases values and the smoothed pixel intensity values.</p>
 
   <div class="doc doc-contents ">
   
-      <p>Compute the single video phase image</p>
+      <p>Compute the mode shape (with phase) image for a single video.</p>
 
 <details class="it-performs-the-following-actions" open>
   <summary>It performs the following actions</summary>
@@ -2437,9 +2484,8 @@ respectively the biases values and the smoothed pixel intensity values.</p>
   with the reference pixel time trace. This dot product inform use
   on the phase of this point of the membrane with respect to the
   reference pixel<ul>
-<li>If the dot product is negative we return <code>- std(pixel)</code> for
-  that pixel on the final image</li>
-<li>Else we return <code>std(pixel)</code> for that pixel in the final image</li>
+<li>If the dot product is negative we put <code>- std(pixel time trace)</code> on the image</li>
+<li>Else we put <code>std(pixel time trace)</code> on the image</li>
 </ul>
 </li>
 </ul>
@@ -2478,20 +2524,7 @@ respectively the biases values and the smoothed pixel intensity values.</p>
 
           <details class="quote">
             <summary>Source code in <code>strobing_interferometer/analysis.py</code></summary>
-            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">112</span>
-<span class="normal">113</span>
-<span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
+            <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">125</span>
 <span class="normal">126</span>
 <span class="normal">127</span>
 <span class="normal">128</span>
@@ -2517,10 +2550,22 @@ respectively the biases values and the smoothed pixel intensity values.</p>
 <span class="normal">148</span>
 <span class="normal">149</span>
 <span class="normal">150</span>
-<span class="normal">151</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@staticmethod</span>
 <span class="k">def</span> <span class="nf">std_image</span><span class="p">(</span><span class="n">video</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Compute the single video phase image</span>
+<span class="sd">    Compute the mode shape (with phase) image for a single video.</span>
 
 <span class="sd">    It performs the following actions:</span>
 <span class="sd">        - Compute the stddev of each pixel along time</span>
@@ -2529,9 +2574,8 @@ respectively the biases values and the smoothed pixel intensity values.</p>
 <span class="sd">          with the reference pixel time trace. This dot product inform use</span>
 <span class="sd">          on the phase of this point of the membrane with respect to the</span>
 <span class="sd">          reference pixel</span>
-<span class="sd">            - If the dot product is negative we return `- std(pixel)` for</span>
-<span class="sd">              that pixel on the final image</span>
-<span class="sd">            - Else we return `std(pixel)` for that pixel in the final image</span>
+<span class="sd">            - If the dot product is negative we put `- std(pixel time trace)` on the image</span>
+<span class="sd">            - Else we put `std(pixel time trace)` on the image</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        video (np.ndarray): The raw video from the camera.</span>
