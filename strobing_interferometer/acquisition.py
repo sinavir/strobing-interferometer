@@ -1,6 +1,6 @@
 import time
 from pathlib import Path
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 import h5py
 import numpy as np
@@ -83,7 +83,7 @@ class InstrumentManager:
     def drive_off(self):
         self.hf2.daq.setInt("/dev1224/sigouts/0/enables/6", 0)
 
-    def goToBias(self, new_bias, speed=0.1, step_size=0.005):
+    def goToBias(self, new_bias, speed=0.2, step_size=0.005):
         """
         Function to go smoothly from one bias value to another
 
@@ -155,7 +155,7 @@ class Acquisition:
 
         self.instruments_manager.drive_off()
 
-        self.instruments_manager.goToBias(biases[0], speed = 1.0)
+        self.instruments_manager.goToBias(biases[0], speed=1.0)
 
         time.sleep(1)
 
@@ -252,7 +252,7 @@ class Acquisition:
             "drive frequency": freq,
         }
 
-        self.instruments_manager.goToBias(biases_vid[0])
+        self.instruments_manager.goToBias(biases_vid[0], speed=1)
 
         print(f"Saving to `{self.path}`")
         with TLCameraSDK() as sdk:
