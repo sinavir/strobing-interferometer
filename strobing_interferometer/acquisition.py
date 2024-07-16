@@ -9,6 +9,8 @@ from RigolDG1032Z.rigol1032 import DG1032Z  # pyright: ignore
 from thorlabs_tsi_sdk.tl_camera import TLCameraSDK
 from tqdm.auto import tqdm, trange
 
+from .idle_camera import camera_lock, camera_semaphore
+
 
 class InstrumentManager:
     """
@@ -77,6 +79,14 @@ class InstrumentManager:
     def strobe_off(self):
         self.rigol.output = False
 
+    def lock_camera(self):
+        camera_semaphore.clear()
+        camera_lock.acquire()
+
+    def unlock_camera(self):
+        camera_semaphore.set()
+        camera_lock.release()
+
     def drive_on(self):
         self.hf2.daq.setInt("/dev1224/sigouts/0/enables/6", 1)
 
@@ -139,6 +149,12 @@ class Acquisition:
             self.instruments_manager = instruments_manager
 
         self.kwargs = kwargs
+
+    def get_camera_lock(self):
+        self.instruments_manager.lock_camera()
+
+    def release_camera_lock(self):
+        self.instruments_manager.unlock_camera()
 
     def acquire_calibration(self):
         """
